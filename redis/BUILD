@@ -45,7 +45,7 @@ cc_library(
 sgx_enclave_configuration(
     name = "redis_enclave_configuration",
     heap_max_size = "0x1000000",
-    stack_max_size = "0x400000",
+    stack_max_size = "0x1000000",
 )
 
 # The whole application wrapper target that runs Redis server inside an enclave.
