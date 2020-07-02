@@ -100,7 +100,7 @@ void initiate_enclave(int signo)
 		}
 	} else {
 		//wait until child completes
-		waitpid(pid, &wstatus, NULL);
+		waitpid(pid, &wstatus, 0);
 		exit(0);
 	}
 }
@@ -135,19 +135,32 @@ void ReloadEnclave(asylo::EnclaveManager *manager, void *base, size_t size)
 {
 	asylo::Status status;
 	// Part 1: Initialization
-	asylo::EnclaveLoader *loader = manager->GetLoaderFromClient(client);
-	asylo::EnclaveConfig config = GetApplicationConfig();
-	config.set_enable_fork(true);
-	config.set_enable_migration(true);
 
-	status = manager->LoadEnclave("hello_enclave", *loader, config, base, size);
+  // Create an EnclaveLoadConfig object.
+  asylo::EnclaveLoadConfig load_config;
+  load_config.set_name("hello_enclave");
+
+  // Create an SgxLoadConfig object.
+  asylo::SgxLoadConfig sgx_config;
+  asylo::SgxLoadConfig::FileEnclaveConfig file_enclave_config;
+  file_enclave_config.set_enclave_path(absl::GetFlag(FLAGS_enclave_path));
+  *sgx_config.mutable_file_enclave_config() = file_enclave_config;
+  sgx_config.set_debug(true);
+	sgx_config.set_enable_fork(true);
+	sgx_config.set_enable_migration(true);
+
+  // Set an SGX message extension to load_config.
+  *load_config.MutableExtension(asylo::sgx_load_config) = sgx_config;
+
+  status = manager->LoadEnclave(load_config);
 	if (!status.ok()) {
 		LOG(QFATAL) << "Load " << absl::GetFlag(FLAGS_enclave_path) << "failed " << status;
 	}
 
 	// Verifies that the new enclave is loaded at the same virtual address space as the parent
-	client  = dynamic_cast<asylo::primitives::SgxEnclaveClient *>(manager->GetClient("hello_enclave"));
-	void *child_enclave_base_address = client->base_address();
+	client  = dynamic_cast<asylo::primitives::SgxEnclaveClient *>(
+      asylo::primitives::Client::GetCurrentClient());
+	void *child_enclave_base_address = client->GetBaseAddress();
 	if (child_enclave_base_address != base) {
 		LOG(ERROR)  << "New enbclave address: " << child_enclave_base_address
 					<< " is different from the parent enclav-e address: " << base;
@@ -155,7 +168,7 @@ void ReloadEnclave(asylo::EnclaveManager *manager, void *base, size_t size)
 		return;
 	} else {
 		status = client->InitiateMigration();
-		LOG(INFO) << "Reloaded Enclave " << absl::GetFlag(FLAGHS_enclave_path);
+		LOG(INFO) << "Reloaded Enclave " << absl::GetFlag(FLAGS_enclave_path);
 	}
 }
 
@@ -163,7 +176,7 @@ void ResumeExecution(asylo::EnclaveManager *manager)
 {
 	asylo::Status status;
 	client->SetProcessId();
-	asylo::ForkHandshakeConfig = fconfig;
+	asylo::ForkHandshakeConfig fconfig;
 	fconfig.set_is_parent(false);
 	fconfig.set_socket(0);
 
@@ -181,7 +194,7 @@ void ResumeExecution(asylo::EnclaveManager *manager)
 	LOG(INFO) << "Restored enclave";
 	gettimeofday(&tve, NULL);
 
-	LOG(INFO) << "( Total time to take snapshot: " << tve.tv_sec - tv.tv_sec << "s " << tve.tv_usec - tv.usec << "usec )";
+	LOG(INFO) << "( Total time to take snapshot: " << tve.tv_sec - tv.tv_sec << "s " << tve.tv_usec - tv.tv_usec << "usec )";
 
 	// Part 0: setup
 	absl::ParseCommandLine(g_argc, g_argv);
@@ -194,7 +207,7 @@ void ResumeExecution(asylo::EnclaveManager *manager)
 		absl::StrSplit(absl::GetFlag(FLAGS_names), ',');
 
 	// Part 2: Secure execution
-	client  = reinterpret_cast<asylo::primitives::SgxEnclaveClient *>(manager->GetClient(hello_enclave));
+  asylo::EnclaveClient *client = manager->GetClient("hello_enclave");
 	for (const auto &name : names) {
 		asylo::EnclaveInput input;
 		input.MutableExtension(mig_world::enclave_input_hello)
@@ -211,7 +224,7 @@ void ResumeExecution(asylo::EnclaveManager *manager)
 
 		std::cout << "Message from enclave: "
 				<< output.GetExtension(mig_world::enclave_output_hello)
-						.gretting_message()
+						.greeting_message()
 				<< std::endl;
 	}
 }
@@ -220,8 +233,9 @@ void Destroy(asylo::EnclaveManager *manager) {
 	// Part 3: Finalization
 	asylo::Status status;
 	asylo::EnclaveFinal final_input;
+  asylo::EnclaveClient *client = manager->GetClient("hello_enclave");
 
-	status = manager->DestroyEnclave(client, final_input, 0);
+	status = manager->DestroyEnclave(client, final_input);
 }
 
 
@@ -282,9 +296,7 @@ int main(int argc, char *argv[]) {
 
   // Part 2: Secure execution
 
-  client = reinterpret_cast<asylo::primitives::SgxEnclaveClient *>(manager->GetClient("hello_enclave"));
-  enc_base = client->GetBaseAddress();
-  enc_size = client->GetEnclaveSize();
+  asylo::EnclaveClient *client = manager->GetClient("hello_enclave");
 
   for (const auto &name : names) {
     asylo::EnclaveInput input;
