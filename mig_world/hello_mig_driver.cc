@@ -140,16 +140,19 @@ void ReloadEnclave(asylo::EnclaveManager *manager, void *base, size_t size)
   asylo::EnclaveLoadConfig load_config;
   load_config.set_name("hello_enclave");
 
+  asylo::EnclaveConfig cfg;
+  cfg.set_enable_fork(true);
+  //cfg.set_enable_migration(true);
+
   // Create an SgxLoadConfig object.
   asylo::SgxLoadConfig sgx_config;
   asylo::SgxLoadConfig::FileEnclaveConfig file_enclave_config;
   file_enclave_config.set_enclave_path(absl::GetFlag(FLAGS_enclave_path));
   *sgx_config.mutable_file_enclave_config() = file_enclave_config;
   sgx_config.set_debug(true);
-	sgx_config.set_enable_fork(true);
-	sgx_config.set_enable_migration(true);
 
   // Set an SGX message extension to load_config.
+  *load_config.mutable_config() = cfg;
   *load_config.MutableExtension(asylo::sgx_load_config) = sgx_config;
 
   status = manager->LoadEnclave(load_config);
@@ -277,17 +280,21 @@ int main(int argc, char *argv[]) {
   asylo::EnclaveLoadConfig load_config;
   load_config.set_name("hello_enclave");
 
+  asylo::EnclaveConfig cfg;
+  cfg.set_enable_fork(true);
+  //cfg.set_enable_migration(true);
+
   // Create an SgxLoadConfig object.
   asylo::SgxLoadConfig sgx_config;
   asylo::SgxLoadConfig::FileEnclaveConfig file_enclave_config;
   file_enclave_config.set_enclave_path(absl::GetFlag(FLAGS_enclave_path));
   *sgx_config.mutable_file_enclave_config() = file_enclave_config;
   sgx_config.set_debug(true);
-  sgx_config.set_enable_fork(true);
-  sgx_config.set_enable_migration(true);
 
   // Set an SGX message extension to load_config.
+  *load_config.mutable_config() = cfg;
   *load_config.MutableExtension(asylo::sgx_load_config) = sgx_config;
+
   asylo::Status status = manager->LoadEnclave(load_config);
   if (!status.ok()) {
     LOG(QFATAL) << "Load " << absl::GetFlag(FLAGS_enclave_path)
