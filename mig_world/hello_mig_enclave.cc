@@ -19,10 +19,12 @@
 #include <cstdint>
 
 #include "absl/strings/str_cat.h"
-#include "asylo/trusted_application.h"
-#include "asylo/util/logging.h"
-#include "asylo/util/status.h"
 #include "mig_world/mig.pb.h"
+#include "asylo/util/logging.h"
+#include "asylo/trusted_application.h"
+#include "asylo/util/status.h"
+
+int global_visitor_count;
 
 class HelloApplication : public asylo::TrustedApplication {
  public:
@@ -37,13 +39,18 @@ class HelloApplication : public asylo::TrustedApplication {
     std::string visitor =
         input.GetExtension(mig_world::enclave_input_hello).to_greet();
 
-    LOG(INFO) << "Hello " << visitor;
+	for (int i = 0 ; visitor_count_ < 200 ; i++) {
+		LOG(INFO) << "Hello ("<< getpid() << ") #" << visitor_count_++
+			<< " \t## " << global_visitor_count++;
+		sleep(3);
+	}
+
     if (output) {
       LOG(INFO) << "Incrementing visitor count...";
       output->MutableExtension(mig_world::enclave_output_hello)
           ->set_greeting_message(
-              absl::StrCat("Hello ", visitor, "! You are visitor #",
-                           ++visitor_count_, " to this enclave."));
+              absl::StrCat("Hello ", visitor, "! visitor count #",
+                           visitor_count_, " to this enclave."));
     }
     return asylo::Status::OkStatus();
   }
