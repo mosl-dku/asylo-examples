@@ -76,7 +76,8 @@ void initiate_enclave(int signo)
 			LOG(FATAL) << "fork failed";
 		} else if (pid >0) {
 			// wait a second for restarting aesmd service
-			sleep(1);
+			//waitpid(0, &wstatus, 0);
+			sleep(5);
 			asylo::EnclaveManager::Configure(asylo::EnclaveManagerOptions());
 			auto manager_result = asylo::EnclaveManager::Instance();
 			if (!manager_result.ok()) {
