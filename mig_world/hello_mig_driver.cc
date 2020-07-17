@@ -29,6 +29,7 @@
 #include "asylo/platform/primitives/sgx/untrusted_sgx.h"
 #include "asylo/util/logging.h"
 #include "mig_world/mig.pb.h"
+#include "asylo/platform/core/generic_enclave_client.h"
 
 #include <signal.h>
 #include <unistd.h>
@@ -146,8 +147,12 @@ void ReloadEnclave(asylo::EnclaveManager *manager, void *base, size_t size)
 
   // Create an SgxLoadConfig object.
   asylo::SgxLoadConfig sgx_config;
+  asylo::SgxLoadConfig::ForkConfig fork_config = sgx_config.fork_config();
+  fork_config.set_base_address(reinterpret_cast<google::protobuf::uint64>(base));
+  LOG(INFO) << "fork_config.set_base_address: " << base;
   asylo::SgxLoadConfig::FileEnclaveConfig file_enclave_config;
   file_enclave_config.set_enclave_path(absl::GetFlag(FLAGS_enclave_path));
+  *sgx_config.mutable_fork_config() = fork_config;
   *sgx_config.mutable_file_enclave_config() = file_enclave_config;
   sgx_config.set_debug(true);
 
@@ -300,11 +305,24 @@ int main(int argc, char *argv[]) {
     LOG(QFATAL) << "Load " << absl::GetFlag(FLAGS_enclave_path)
                 << " failed: " << status;
   }
+/*  asylo::primitives::SgxEnclaveClient *sgxclient =
+		dynamic_cast<asylo::primitives::SgxEnclaveClient *>(
+      asylo::primitives::EnclaveSignalDispatcher::GetInstance()->GetClientForSignal(0));*/
+
+    asylo::GenericEnclaveClient *client_ = reinterpret_cast<asylo::GenericEnclaveClient *>(
+        manager->GetClient("hello_enclave"));
+    std::shared_ptr<asylo::primitives::SgxEnclaveClient> primitive_client_ =
+        std::static_pointer_cast<asylo::primitives::SgxEnclaveClient>(
+            client_->GetPrimitiveClient());
+
+  LOG(INFO) << "sgxclient: " << primitive_client_;
+  enc_base = primitive_client_->GetBaseAddress();
+  LOG(INFO) << "enc_base: " << enc_base;
+
 
   // Part 2: Secure execution
 
   asylo::EnclaveClient *client = manager->GetClient("hello_enclave");
-
   for (const auto &name : names) {
     asylo::EnclaveInput input;
     input.MutableExtension(mig_world::enclave_input_hello)
