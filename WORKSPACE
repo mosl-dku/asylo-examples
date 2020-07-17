@@ -11,7 +11,7 @@ workspace(name = "asylo_examples")
 #)
 local_repository(
      name = "com_google_asylo",
-     path = "/root/asylo/sdk",
+     path = "/home/kevin/asylo/",
 )
 load("@com_google_asylo//asylo/bazel:asylo_deps.bzl", "asylo_deps",
      "asylo_testonly_deps")
