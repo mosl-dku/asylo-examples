@@ -311,12 +311,14 @@ int main(int argc, char *argv[]) {
 
     asylo::GenericEnclaveClient *client_ = reinterpret_cast<asylo::GenericEnclaveClient *>(
         manager->GetClient("hello_enclave"));
+	// if it works, primitive_client_ --> client
     std::shared_ptr<asylo::primitives::SgxEnclaveClient> primitive_client_ =
         std::static_pointer_cast<asylo::primitives::SgxEnclaveClient>(
             client_->GetPrimitiveClient());
 
   LOG(INFO) << "sgxclient: " << primitive_client_;
   enc_base = primitive_client_->GetBaseAddress();
+  client = (asylo::primitives::SgxEnclaveClient *)primitive_client_.get();
   LOG(INFO) << "enc_base: " << enc_base;
 
 
